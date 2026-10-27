@@ -1,0 +1,103 @@
+[
+  {
+    "name": "Quick and deep capture preserve advanced decision data",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": [
+      "quick/deep capture mode",
+      "decision and assumption ownership",
+      "ranked alternatives",
+      "numeric best/base/worst scenarios",
+      "optional probability weights summing to 100%",
+      "commitment creation and owner/due date",
+      "legacy local-data normalization"
+    ],
+    "description": "Verifies a fast decision capture and its deep extension retain the new forecasting, ownership, and follow-up fields.",
+    "steps": [
+      "Create a decision in Quick mode with a title, choice, project, owner and review date.",
+      "Switch to Deep mode; enter best/base/worst scenario ranges, probabilities totalling 100%, an assumption owner, and two commitments with owners and due dates.",
+      "Save, refresh, reopen the decision and verify the fields are retained; try a partial or non-100% set of probability weights on another decision."
+    ],
+    "expected": "Scenario ranges and weights, owners, and commitments persist locally; incomplete probability weights are rejected without creating an invalid record."
+  },
+  {
+    "name": "Log lightweight signals between formal reviews",
+    "viewport": "desktop",
+    "covers": [
+      "one-step signal capture",
+      "decision-level and assumption-level signals",
+      "supports/weakens/neutral evidence stance",
+      "dated evidence trail",
+      "signal log does not silently change assumption verdict",
+      "signal log in export"
+    ],
+    "description": "Verifies the user can record an observation directly from a decision without opening the formal review workflow.",
+    "steps": [
+      "Open a decision with at least one named assumption.",
+      "Log a dated decision-level observation and a second observation targeted at the assumption; use Supports and Weakens respectively.",
+      "Reopen the decision and inspect the chronological signal trail, assumption status, and Markdown export."
+    ],
+    "expected": "Both observations remain in the evidence trail with dates, target and stance; logging evidence alone does not automatically alter the formal assumption status."
+  },
+  {
+    "name": "Track commitments and urgency across time",
+    "viewport": "desktop",
+    "covers": [
+      "mark commitment done or missed",
+      "reopen a commitment",
+      "due and overdue commitments",
+      "urgency labels",
+      "urgency filtering",
+      "stale high-risk assumption with no recent signal",
+      "triggered kill criterion urgency"
+    ],
+    "description": "Verifies operational follow-ups can be closed accurately and urgency follows visible dates, risk and trigger conditions.",
+    "steps": [
+      "Create a decision with an overdue open commitment, an unresolved high-risk assumption, and a review date in the past.",
+      "Mark the commitment Done, then Missed, then reopen it; log a recent signal against the high-risk assumption.",
+      "Inspect the decision urgency badge and filter the decision list by Urgent, Watch, Aging and Critical."
+    ],
+    "expected": "Commitment status changes persist, overdue items are visibly flagged, a recent signal updates stale-evidence urgency, and triggered kill criteria appear as Critical."
+  },
+  {
+    "name": "Review calibration, commitments, ownership and exports",
+    "viewport": "desktop",
+    "covers": [
+      "formal review and assumption verdicts",
+      "decision calibration and grade patterns",
+      "commitment and owner display",
+      "complete decision Markdown export",
+      "complete project Markdown export",
+      "project PDF scenario/commitment/signal content",
+      "JSON backup"
+    ],
+    "description": "Verifies the added operational and quantitative data is carried into the durable records and reporting workflows.",
+    "steps": [
+      "Review a decision with a numeric scenario, signal history, assumption owners and commitments.",
+      "Export the decision as Markdown and export the containing project as Markdown and PDF.",
+      "Export a JSON backup and reopen Learning stats."
+    ],
+    "expected": "The reports include ownership, scenarios, signal entries and commitments; the backup downloads; learning metrics remain available from reviewed data."
+  },
+  {
+    "name": "Use the updated local-first app on mobile and offline",
+    "viewport": "mobile",
+    "covers": [
+      "mobile capture and responsive controls",
+      "urgency filter usability",
+      "service-worker app-shell caching",
+      "local persistence",
+      "required title and choice guardrails",
+      "IndexedDB as primary local persistence",
+      "migration from the prior localStorage store",
+      "fallback persistence when IndexedDB is unavailable"
+    ],
+    "description": "Verifies new controls fit a narrow viewport and saved decisions remain available on the same device after the shell has been cached.",
+    "steps": [
+      "At a 375px viewport, open Decision Ledger online and allow its local store to initialize; verify existing decisions are still present after migration.",
+      "Create a valid decision, save an owner and open commitment, refresh, apply the urgency filter, and log a short signal.",
+      "After service-worker installation and one online revisit, reopen the app with network disabled."
+    ],
+    "expected": "Existing localStorage data remains available after migration; new decision, signal, and commitment data persist through IndexedDB (or the explicit browser-storage fallback), and the cached app shell opens offline on the same device."
+  }
+]
