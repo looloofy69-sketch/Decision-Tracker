@@ -1381,6 +1381,14 @@ function App() {
             <div className="brand-name">Decision Ledger</div>
             <div className="brand-caption">Think clearly. Learn honestly.</div>
           </div>
+          <button
+            className="mobile-nav-close icon-button"
+            type="button"
+            aria-label="Close navigation"
+            onClick={() => setMobileNavOpen(false)}
+          >
+            <X size={18} />
+          </button>
         </div>
         <button
           className="primary-button new-decision-sidebar"
