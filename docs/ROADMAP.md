@@ -10,6 +10,22 @@
 - [x] Extract shared domain types and risk/urgency calculations from the React component.
 - [x] Establish source repository and CI baseline.
 
+## Phase 0.5 — UX stabilization and review gate (must precede domain normalization)
+
+- [x] Group navigation into Workspace, Risk & Attention, and Analysis & Learning.
+- [x] Replace the crowded small-screen horizontal navigation strip with an accessible, dismissible menu.
+- [x] Add in-record jump navigation for long decision details.
+- [x] Make project/record context clearer in the header.
+- [x] Surface storage fallback/failure status with a direct backup action.
+- [x] Correct the interaction where urgency-only filtering accidentally applied a time-horizon rule.
+- [x] Add acceptance scenarios for mobile navigation, section jumps, and independent urgency/horizon filtering.
+- [ ] Manually verify mobile navigation on a real device at 375px and 320px widths.
+- [ ] Keyboard-test menu open/close, focus visibility, anchor navigation, forms, and dialogs.
+- [ ] Measure Quick Capture from opening the form to save; meet the 30–40 second target without requiring Deep Mode.
+- [ ] Run the acceptance suite and record any failures or regressions before approving the next phase.
+
+**Gate:** Phase 1 stays paused until the UX checklist above is reviewed. The current deployment's clean frontend/network QA snapshot is useful, but it does not replace hands-on usability, accessibility, or end-to-end testing.
+
 ## Phase 1 — Domain correctness and normalization
 
 - [ ] First-class Project records with UUIDs, descriptions, status, and timestamps.
@@ -23,10 +39,8 @@
 ## Phase 2 — UI and workflow hardening
 
 - [ ] Split the large React component into capture, decision detail, review, portfolio, comparison, and export modules.
-- [ ] Measure the fast-capture path against the 30–40 second target on mobile.
-- [ ] Add loading, empty, error, and degraded-storage states.
-- [ ] Add browser E2E tests for CRUD, review, export, restore, migration, and offline startup.
-- [ ] Add accessibility and mobile regression checks.
+- [ ] Validate keyboard and mobile behavior using the UX gate.
+- [ ] Add reproducible browser E2E tests for CRUD, review, export, restore, migration, and offline startup.
 - [ ] Test IndexedDB quota, blocked upgrades, malformed data, and unavailable storage.
 
 ## Phase 3 — Optional evolution
