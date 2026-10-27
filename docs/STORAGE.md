@@ -1,24 +1,30 @@
-# Local persistence and migration
+# Local persistence and schema migration
 
 ## Current implementation
 
-- IndexedDB database: `decision-ledger`, schema version 1.
-- Object store: `workspace`.
-- Current key: `current`.
-- Payload: the aggregate `Store` object, including decisions and project name strings.
-- Compatibility key in localStorage: `decision-assumption-tracker-v1`.
+- IndexedDB database: `decision-ledger`, schema version 2.
+- Legacy aggregate store: `workspace`, key `current`.
+- Normalized stores: `projects`, `decisions`, `alternatives`, `assumptions`, `killCriteria`, `signals`, `commitments`, `relations`, `reviews`, `assumptionReviews`, and `decisionVersions`.
+- Schema marker store: `workspaceMeta`; marker key `normalized-workspace-v1`.
+- Pre-normalization snapshot store: `legacySnapshots`; first snapshot key `aggregate-before-normalization-v1`.
+- localStorage compatibility key: `decision-assumption-tracker-v1`.
 
-On startup, the app opens IndexedDB. If a valid workspace record exists, it is authoritative and a best-effort localStorage mirror is refreshed. If no valid IndexedDB record exists, the app reads and normalizes the previous localStorage payload, writes it to IndexedDB, and retains the mirror. If IndexedDB is unavailable or errors, reads and writes fall back to localStorage.
+The interface continues using the legacy aggregate model. On a normalized read, the storage adapter validates records and hydrates the aggregate shape. On save, it maps the aggregate back into normalized entities in a single read/write transaction while preserving project IDs, relations, reviews and referenced tombstones.
 
-## Guarantees and limitations
+## Migration guarantees
 
-- This is local persistence, not cloud sync.
-- Browser storage is scoped to the browser profile and origin; it does not automatically transfer across devices or browsers.
-- The localStorage mirror may fail independently while IndexedDB still succeeds.
-- If both persistence mechanisms fail, the UI should show a storage error and the user should export a backup as soon as possible.
-- Clearing site data, uninstalling a browser, or losing a device can remove both copies. Exported JSON is the portable recovery path.
-- The current IndexedDB schema stores an aggregate workspace. Normalized per-entity object stores and project IDs remain planned work.
+The first schema-v2 load creates normalized records and stores the original aggregate in the snapshot table within the same transaction that writes the normalized tables and migration marker. If relationship validation fails, the transaction aborts; it does not partially commit the normalized stores. The old aggregate and localStorage mirror remain available for recovery/fallback.
 
-## Safe migration requirements
+Routine saves update the normalized entities, migration marker, and aggregate compatibility copy atomically. The first pre-normalization snapshot is not replaced by routine saves. Review and assumption-review history that the old format never captured cannot be reconstructed; see [DOMAIN_MODEL.md](DOMAIN_MODEL.md).
 
-Use a new IndexedDB version and an explicit migration function for schema changes. Test empty storage, current aggregate localStorage data, already-migrated IndexedDB data, and malformed payloads. Validate record counts and foreign keys before committing a normalized workspace. Never clear the legacy key until the user has a successful backup/export path.
+## Recovery and fallback
+
+- If IndexedDB is unavailable or blocked by another open tab, the app falls back to localStorage and shows a backup warning.
+- If a normalized read reports structural relationship errors, the adapter attempts recovery from the retained aggregate copy and emits a notice.
+- If both persistence methods fail, the UI shows a save error. Export a JSON backup before clearing browser data.
+- Do not clear localStorage or the legacy aggregate as part of normalization.
+- The deployment being ready does not mean that every device has migrated; the local migration runs on the next successful app open on that device.
+
+## Scope and limits
+
+This is browser-local persistence, not cloud sync. IndexedDB and localStorage are scoped to the browser profile and origin; they do not automatically transfer across devices. Export JSON before clearing site data, changing browsers, or switching devices.
