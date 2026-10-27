@@ -58,7 +58,7 @@ function normalizeDecision(value: Partial<Decision> & Record<string, any>, index
       text: a.text || '',
       reason: a.reason || '',
       almostChosen: Boolean(a.almostChosen),
-      rank: Number.isFinite(a.rank) && a.rank > 0 ? Number(a.rank) : i + 1,
+      rank: typeof a.rank === 'number' && Number.isFinite(a.rank) && a.rank > 0 ? a.rank : i + 1,
       secondBest: Boolean(a.secondBest ?? a.almostChosen),
       revived: Boolean(a.revived),
     })
@@ -195,13 +195,6 @@ const ASSUMPTION_TYPES = [
   'Legal / compliance',
   'External',
   'Other',
-];
-const STATUS_OPTIONS: AssumptionStatus[] = [
-  'Active',
-  'Confirmed',
-  'Violated',
-  'Uncertain',
-  'Expired',
 ];
 const REVIEW_STATUS_OPTIONS: AssumptionStatus[] = [
   'Confirmed',
