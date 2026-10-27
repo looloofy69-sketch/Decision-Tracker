@@ -2729,11 +2729,25 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   .filter-panel .search-wrap { padding: 0 8px; }
   .decision-row { border-radius: 9px; }
 }
+.mobile-nav-close { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     scroll-behavior: auto !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 800px) {
+  .sidebar.mobile-nav-open .mobile-nav-close {
+    display: inline-flex;
+    flex: 0 0 36px;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    padding: 0;
+    margin-left: auto;
   }
 }
