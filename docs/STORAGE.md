@@ -20,7 +20,8 @@ Routine saves update the normalized entities, migration marker, and aggregate co
 ## Recovery and fallback
 
 - If IndexedDB is unavailable or blocked by another open tab, the app falls back to localStorage and shows a backup warning.
-- If a normalized read reports structural relationship errors, the adapter attempts recovery from the retained aggregate copy and emits a notice.
+- If a normalized read reports structural relationship errors, the adapter attempts recovery from the retained aggregate copy and emits a notice. A populated retained aggregate is preferred over a potentially stale localStorage mirror; localStorage is used when the retained aggregate is absent or empty.
+- If the normalized migration fails before data can be safely loaded, the adapter keeps the retained aggregate as the preferred recovery source and enters browser-storage fallback mode when possible.
 - If both persistence methods fail, the UI shows a save error. Export a JSON backup before clearing browser data.
 - Do not clear localStorage or the legacy aggregate as part of normalization.
 - The deployment being ready does not mean that every device has migrated; the local migration runs on the next successful app open on that device.
