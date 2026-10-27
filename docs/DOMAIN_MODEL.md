@@ -1,43 +1,49 @@
-# Domain model
+# Domain model and migration status
 
-## Current storage shape
+## Runtime boundary
 
-The current deployed UI uses a readable aggregate payload:
+The current React interface still consumes the compatible aggregate shape:
 
-- `Store` contains `decisions: Decision[]` and `projects: string[]`.
-- Alternatives, assumptions, kill criteria, signals, commitments, and version snapshots are nested inside each decision.
-- A decision references its project by name (`project`), not by a stable `projectId`.
-- The current review UI stores the latest review fields on the decision. It does not yet persist first-class review history with join records for each assumption verdict.
+- `Store` contains `decisions: Decision[]` and active `projects: string[]`.
+- The storage adapter maps that shape to normalized records before every IndexedDB write and hydrates it after a validated read.
+- The UI can therefore be refactored separately from storage; this adapter is the compatibility seam.
 
-This aggregate is retained during the first persistence migration to avoid losing existing browser data.
+The normalized storage implementation is introduced in IndexedDB schema version 2. It has dedicated object stores for projects, decisions, alternatives, assumptions, kill criteria, signals, commitments, decision relations, reviews, assumption-review verdicts, and decision versions.
 
-## Target normalized model
+## Normalized entities
 
-The next domain migration should make each entity first-class and use UUID primary keys plus explicit foreign keys:
+| Entity | Stored relationship / fields |
+|---|---|
+| Project | UUID for new project records, name, description, active/archived status, timestamps and ordering |
+| Decision | Project foreign key, optional parent decision, decision fields and ordering |
+| Alternative | Decision foreign key, rank and ordering |
+| Assumption | Decision foreign key, confidence, impact, evidence, owner and status |
+| KillCriterion | Decision foreign key, trigger state and dates |
+| Signal | Decision foreign key; optional assumption foreign key; raw target ID is retained when the target assumption has since been removed |
+| Commitment | Decision foreign key, owner, due date and status |
+| DecisionRelation | Source decision, optional target decision, relation type and ordering; multiple links remain supported |
+| Review | First-class review record linked to a decision |
+| AssumptionReview | Review/assumption join with a confirmed, violated or uncertain verdict |
+| DecisionVersion | Decision foreign key and snapshot metadata |
 
-| Entity | Key fields | Relationship |
-|---|---|---|
-| Project | id, name, description, status, createdAt, updatedAt | Parent for decisions |
-| Decision | id, projectId, parentDecisionId, title, context, finalChoice, decisionDate, confidence, reversibility, timeHorizon, type, owner, status | Belongs to project; may depend on another decision |
-| Alternative | id, decisionId, title, rejectionReason, rank, wasSecondBest | Belongs to one decision |
-| Assumption | id, decisionId, statement, confidence, impactIfWrong, evidenceLevel, monitoringSignal, owner, status | Belongs to one decision |
-| KillCriterion | id, decisionId, description, triggered, triggeredAt | Belongs to one decision |
-| Signal | id, decisionId, assumptionId, date, observation, effect, createdAt | Belongs to a decision; optionally targets one assumption |
-| Commitment | id, decisionId, description, owner, dueDate, status | Belongs to one decision |
-| Review | id, decisionId, reviewDate, actualOutcome, decisionGrade, lessonsLearned, createdAt | One decision may have many reviews |
-| AssumptionReview | reviewId, assumptionId, verdict | Join record linking a review to an assumption verdict |
+Existing record IDs are retained exactly rather than rewritten during the migration. Newly created project, relation, review and join records use the UUID generator. This avoids breaking legacy references during a destructive-looking migration, but means a legacy record may retain a non-UUID ID until a separately designed identity migration is justified.
 
-Risk scores should remain derived values, not the authoritative source of truth. Risk/urgency calculations belong in `src/domain/risk.ts`, outside React components.
+## Safe-migration behavior
 
-## Invariants
+1. The database upgrade creates the normalized object stores while retaining the prior `workspace` object store.
+2. A single read/write transaction validates relationships, writes normalized entities, adds the migration marker, refreshes the compatibility aggregate, and stores the original aggregate in `legacySnapshots`.
+3. Existing decisions, child records and project order are round-tripped through the adapter. The snapshot is not overwritten on routine saves.
+4. Removed decisions become hidden tombstones when needed to preserve review or child-record references. Removed assumptions are retained as tombstones when review or signal history references them.
+5. Historic signal targets that no longer resolve are retained as plain target IDs instead of fabricating a foreign key.
+6. Structural foreign-key errors abort the transaction; the legacy aggregate remains available as the recovery source. Scenario-weight inconsistencies are warnings rather than migration blockers so old values are not discarded.
 
-1. Every foreign key resolves to an entity of the expected type.
-2. Each project and persisted record has a stable UUID; loading data must not regenerate IDs.
-3. Scenario weights are optional. If any probability is supplied, all three must be supplied, each must be 0–100, and the sum must be 100.
-4. Signal capture records evidence but never silently changes an assumption verdict.
-5. An uncleared kill criterion has Critical urgency.
-6. Migrations are idempotent, versioned, validated before commit, and preserve a recoverable copy of the old payload.
+## Important limit of legacy review data
 
-## Migration strategy
+The old aggregate stored only the latest review fields and current assumption statuses. It did **not** contain a full history of every review or the assumption statuses at each past review. Migration can create a first-class record for the latest available review and backfill join verdicts from the statuses visible at migration time; it cannot reconstruct historical verdicts that were never stored. Treat those backfilled verdicts as approximations, not verified historical facts.
 
-Do not replace the aggregate store in-place with a normalized model in one untested change. Implement a pure, tested adapter from the legacy aggregate to a normalized workspace, preserve existing IDs, assign stable IDs to project records, and validate foreign keys and record counts. Only then write the normalized schema in a transaction and retain the old payload until a later successful launch confirms migration.
+## Next work
+
+- Show first-class Project metadata and review history in the UI without forcing every screen to consume normalized rows directly.
+- Add an import/restore workflow that validates schema version, identifiers, and foreign keys before accepting a backup.
+- Add a migration recovery screen for malformed legacy records rather than leaving users only with the generic browser-storage fallback state.
+- Keep the normalized schema migration separate from subsequent UI/domain changes so data-loss regressions are diagnosable.
