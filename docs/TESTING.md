@@ -22,7 +22,13 @@ The pre-normalization aggregate is retained in a separate IndexedDB snapshot. Mi
 
 ## Current verification status
 
-The live deployment reports a ready status and no frontend or network errors. Those checks are not the same as a successful Vitest run, browser migration test, keyboard accessibility session, or real-device usability study. Do not report those as passed until run evidence is available.
+- **GitHub Actions:** passed type-check, six domain tests, and production build for commit `40347082a34a79948c7cb2d010a73c8024783b92` in [run 40447422411](https://github.com/looloofy69-sketch/Decision-Tracker/actions/runs/40447422411).
+- **AppDeploy snapshot:** reported `ready` with no frontend or network errors for snapshot `1793073269994`.
+- **Not yet verified:** browser-driven migration with legacy fixtures, migration rollback under malformed/blocked data, keyboard accessibility, real-device navigation, offline restoration, and Quick Capture time on an actual mobile device.
+- **Dependency advisories:** the CI install output reported 6 npm audit vulnerabilities (3 moderate, 1 high, 2 critical). A detailed `npm audit` has not yet been run, so affected packages and exploitability have not been assessed.
+- **Production hotfix limitation:** the AppDeploy usage limit prevented pushing a follow-up source-only type/self-link hardening patch into the live snapshot. The repository contains the corrected source and CI passed for the corrected code; the live app remains at snapshot `1793073269994` until a deployment can be completed.
+
+Do not interpret the successful CI build as proof of real-device usability or a successful on-device data migration.
 
 ## Release gate
 
