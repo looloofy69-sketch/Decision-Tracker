@@ -10,7 +10,9 @@
       "numeric best/base/worst scenarios",
       "optional probability weights summing to 100%",
       "commitment creation and owner/due date",
-      "legacy local-data normalization"
+      "legacy local-data normalization",
+      "normalization warnings do not delete existing values",
+      "project identifiers remain stable after a subsequent save"
     ],
     "description": "Verifies a fast decision capture and its deep extension retain the new forecasting, ownership, and follow-up fields.",
     "steps": [
@@ -96,14 +98,18 @@
       "grouped mobile navigation open/close and destination selection",
       "responsive two-column navigation menu",
       "active navigation state",
-      "independent urgency filter behavior"
+      "independent urgency filter behavior",
+      "normalized entity stores",
+      "versioned foreign-key validation",
+      "recoverable pre-normalization snapshot",
+      "deleted records retained as tombstones for audit history"
     ],
     "description": "Verifies new controls fit a narrow viewport and saved decisions remain available on the same device after the shell has been cached.",
     "steps": [
-      "At 375px viewport, open the navigation menu and verify Workspace, Risk & Attention, and Analysis & Learning groups are readable; choose All decisions and verify the menu closes.",
-      "Create a valid decision, save an owner and open commitment, refresh, apply only the urgency filter, and log a short signal from the record.",
-      "Use the decision detail section links to jump between Assumptions, Signals and Review, then after service-worker installation and one online revisit reopen the app with network disabled."
+      "Open the existing app so it upgrades the IndexedDB schema; verify the prior decisions, project names and visible order remain intact after the upgrade.",
+      "Open and save decisions that include alternatives, assumptions, signals, commitments, versions and related-decision links; refresh and compare the current record. Delete a test decision that has a review and verify it no longer appears in the UI while its history remains internally linked.",
+      "Export a JSON backup, then reopen the app offline after a prior online visit and check the local workspace remains readable."
     ],
-    "expected": "The grouped mobile menu is usable and closes after navigation; decision, signal, and commitment data persist locally; urgency is not coupled to horizon; section jump links work at mobile width; the cached shell opens offline on the same device."
+    "expected": "The aggregate adapter round-trips current user-facing records while normalized tables store explicit entity foreign keys, review history and assumption verdicts. A pre-migration aggregate snapshot is retained, deleted decisions/assumptions are hidden tombstones when history references them, and the app remains locally usable."
   }
 ]
