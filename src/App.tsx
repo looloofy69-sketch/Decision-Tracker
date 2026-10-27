@@ -690,6 +690,7 @@ function App() {
     assumptionStatuses: {},
   });
   const [storageError, setStorageError] = useState(false);
+  const [storageNotice, setStorageNotice] = useState('');
   const [storeReady, setStoreReady] = useState(false);
   const [storageBackend, setStorageBackend] = useState<'IndexedDB' | 'localStorage'>('IndexedDB');
 
@@ -700,6 +701,7 @@ function App() {
         if (!active) return;
         setStore(result.store);
         setStorageBackend(result.backend);
+        setStorageNotice(result.notice || '');
         setStorageError(false);
         setStoreReady(true);
       })
@@ -707,6 +709,7 @@ function App() {
         if (!active) return;
         setStore(readStore());
         setStorageBackend('localStorage');
+        setStorageNotice('IndexedDB could not be opened. Your browser-local copy is loaded as a fallback; export a backup before clearing site data.');
         setStorageError(true);
         setStoreReady(true);
       });
@@ -1509,15 +1512,21 @@ function App() {
         </header>
 
         <div className="workspace">
-          {(storageError || storageBackend === 'localStorage') && (
+          {(storageError || storageBackend === 'localStorage' || storageNotice) && (
             <section className={'storage-alert ' + (storageError ? 'storage-alert-error' : 'storage-alert-warning')} role="alert">
               <ShieldAlert size={18} />
               <div>
-                <strong>{storageError ? 'Local saving needs attention' : 'Using browser-storage fallback'}</strong>
+                <strong>
+                  {storageError ? 'Local saving needs attention'
+                    : storageBackend === 'localStorage' ? 'Using browser-storage fallback'
+                      : 'Data migration needs review'}
+                </strong>
                 <p>
                   {storageError
                     ? 'The app could not confirm that your latest changes were saved. Export a backup and check available browser storage.'
-                    : 'IndexedDB is unavailable in this browser context. Data is still kept locally, but export a backup before clearing site data.'}
+                    : storageBackend === 'localStorage'
+                      ? 'IndexedDB is unavailable in this browser context. Data is still kept locally, but export a backup before clearing site data.'
+                      : storageNotice}
                 </p>
               </div>
               <button className="secondary-button" type="button" onClick={exportBackup}>
