@@ -211,7 +211,6 @@ export function hydrateStore(workspace: NormalizedWorkspace): Store {
     return grouped;
   };
   const liveDecisions = workspace.decisions.filter(item => !item.deletedAt);
-  const liveIds = new Set(liveDecisions.map(item => item.id));
   const alternatives = group(workspace.alternatives);
   const assumptions = group(workspace.assumptions.filter(item => !item.deletedAt));
   const killCriteria = group(workspace.killCriteria);
