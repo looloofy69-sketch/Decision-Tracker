@@ -33,7 +33,7 @@
 - [x] Retain a pre-normalization aggregate snapshot and keep a compatibility aggregate for the UI.
 - [x] Add structural foreign-key validation, scenario-weight warnings, and tombstones for referenced deleted records.
 - [x] Add unit tests for round-trip mapping, stable IDs, review joins, tombstones, unresolved signals and invalid links.
-- [ ] Verify unit tests, TypeScript checks and production build in CI; record the result.
+- [x] Verify type-check, six domain tests, and production build in GitHub Actions (run [40447422411](https://github.com/looloofy69-sketch/Decision-Tracker/actions/runs/40447422411), commit `40347082a34a79948c7cb2d010a73c8024783b92`).
 - [ ] Run a real browser migration test against representative legacy fixtures, including blocked-upgrade and malformed-data recovery.
 - [ ] Validate import/restore before treating the JSON backup path as a complete recovery workflow.
 
