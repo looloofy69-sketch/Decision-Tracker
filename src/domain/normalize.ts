@@ -198,3 +198,121 @@ export function normalizeStore(source: Store, prior?: NormalizedWorkspace, optio
     alternatives: completeAlternatives, assumptions, killCriteria: completeKillCriteria,
     signals: completeSignals, commitments: completeCommitments, relations, reviews,
     assumptionReviews, decisionVersions: completeVersions,
+  };
+}
+
+export function hydrateStore(workspace: NormalizedWorkspace): Store {
+  const projectsById = new Map(workspace.projects.map(project => [project.id, project]));
+  const sortPosition = <T extends { position: number }>(list: T[]) => list.slice().sort((a, b) => a.position - b.position);
+  const group = <T extends Child>(list: T[]) => {
+    const grouped = new Map<string, T[]>();
+    for (const row of list) grouped.set(row.decisionId, [...(grouped.get(row.decisionId) || []), row]);
+    for (const [key, value] of grouped) grouped.set(key, sortPosition(value));
+    return grouped;
+  };
+  const liveDecisions = workspace.decisions.filter(item => !item.deletedAt);
+  const liveIds = new Set(liveDecisions.map(item => item.id));
+  const alternatives = group(workspace.alternatives);
+  const assumptions = group(workspace.assumptions.filter(item => !item.deletedAt));
+  const killCriteria = group(workspace.killCriteria);
+  const signals = group(workspace.signals);
+  const commitments = group(workspace.commitments);
+  const versions = group(workspace.decisionVersions);
+  const linked = new Map<string, DecisionRelationRecord[]>();
+  for (const relation of workspace.relations) linked.set(relation.sourceDecisionId, [...(linked.get(relation.sourceDecisionId) || []), relation]);
+  for (const [key, value] of linked) linked.set(key, sortPosition(value));
+  const strip = <T extends Record<string, unknown>>(list: T[] | undefined, keys: string[]) => (list || []).map(row => {
+    const result = { ...row };
+    keys.forEach(key => { delete result[key]; });
+    return result;
+  });
+
+  const decisions: Decision[] = sortPosition(liveDecisions).map(record => {
+    const { projectId, parentDecisionId, position, deletedAt, ...core } = record;
+    void parentDecisionId; void position; void deletedAt;
+    return {
+      ...core,
+      project: projectsById.get(projectId)?.name || 'General',
+      alternatives: strip(alternatives.get(record.id) as unknown as Array<Alternative & Record<string, unknown>>, ['decisionId', 'position']) as unknown as Alternative[],
+      assumptions: strip(assumptions.get(record.id) as unknown as Array<AssumptionRecord & Record<string, unknown>>, ['decisionId', 'position', 'deletedAt']) as unknown as Assumption[],
+      killCriteria: strip(killCriteria.get(record.id) as unknown as Array<KillCriterion & Record<string, unknown>>, ['decisionId', 'position']) as unknown as KillCriterion[],
+      commitments: strip(commitments.get(record.id) as unknown as Array<Commitment & Record<string, unknown>>, ['decisionId', 'position']) as unknown as Commitment[],
+      signals: strip(signals.get(record.id) as unknown as Array<SignalRecord & Record<string, unknown>>, ['decisionId', 'assumptionId', 'createdAt', 'position']) as unknown as SignalLog[],
+      versions: strip(versions.get(record.id) as unknown as Array<DecisionVersionRecord & Record<string, unknown>>, ['decisionId', 'position']) as unknown as DecisionVersion[],
+      relatedIds: (linked.get(record.id) || []).map(item => item.targetDecisionId || item.unresolvedTargetId || ''),
+    };
+  });
+  const activeProjectNames = sortPosition(workspace.projects.filter(item => item.status === 'active')).map(item => item.name);
+  for (const decision of decisions) if (!activeProjectNames.includes(decision.project)) activeProjectNames.push(decision.project);
+  return { decisions, projects: activeProjectNames.length ? activeProjectNames : ['General'] };
+}
+
+export function validateNormalizedWorkspace(workspace: NormalizedWorkspace): NormalizationReport {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  if (workspace.schemaVersion !== NORMALIZED_SCHEMA_VERSION) errors.push('Unsupported normalized schema version.');
+  const ids = new Set<string>();
+  const checkIds = (records: Array<{ id: string }>, label: string) => records.forEach(record => {
+    if (!record.id?.trim()) errors.push(label + ' contains a blank ID.');
+    else if (ids.has(record.id)) errors.push('Duplicate record ID: ' + record.id);
+    else ids.add(record.id);
+  });
+  checkIds(workspace.projects, 'Projects');
+  checkIds(workspace.decisions, 'Decisions');
+  checkIds(workspace.alternatives, 'Alternatives');
+  checkIds(workspace.assumptions, 'Assumptions');
+  checkIds(workspace.killCriteria, 'Kill criteria');
+  checkIds(workspace.signals, 'Signals');
+  checkIds(workspace.commitments, 'Commitments');
+  checkIds(workspace.relations, 'Relations');
+  checkIds(workspace.reviews, 'Reviews');
+  checkIds(workspace.assumptionReviews, 'Assumption reviews');
+  checkIds(workspace.decisionVersions, 'Decision versions');
+
+  const projectIds = new Set(workspace.projects.map(item => item.id));
+  const decisionIds = new Set(workspace.decisions.map(item => item.id));
+  const assumptionsById = new Map(workspace.assumptions.map(item => [item.id, item]));
+  const assumptionIds = new Set(workspace.assumptions.map(item => item.id));
+  const reviewById = new Map(workspace.reviews.map(item => [item.id, item]));
+  const projectNames = new Set<string>();
+  for (const project of workspace.projects) {
+    if (!project.name.trim()) errors.push('Project ' + project.id + ' has a blank name.');
+    if (projectNames.has(project.name)) errors.push('Duplicate project name: ' + project.name);
+    projectNames.add(project.name);
+  }
+  for (const decision of workspace.decisions) {
+    if (!projectIds.has(decision.projectId)) errors.push('Decision ' + decision.id + ' references a missing project.');
+    if (decision.parentDecisionId && !decisionIds.has(decision.parentDecisionId)) errors.push('Decision ' + decision.id + ' references a missing parent decision.');
+    if (decision.parentDecisionId === decision.id) errors.push('A decision cannot depend on itself.');
+    if (!decision.title.trim()) warnings.push('Decision ' + decision.id + ' has a blank title.');
+    const weights = [decision.scenarios.best.probability, decision.scenarios.base.probability, decision.scenarios.worst.probability].map(value => String(value || '').trim());
+    if (weights.some(Boolean)) {
+      if (weights.some(value => !value)) warnings.push('Decision ' + decision.id + ' has incomplete scenario weights.');
+      else if (weights.some(value => !Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > 100)) warnings.push('Decision ' + decision.id + ' has a scenario weight outside 0–100.');
+      else if (weights.reduce((sum, value) => sum + Number(value), 0) !== 100) warnings.push('Decision ' + decision.id + ' scenario weights do not sum to 100%.');
+    }
+  }
+  for (const child of [...workspace.alternatives, ...workspace.assumptions, ...workspace.killCriteria, ...workspace.signals, ...workspace.commitments, ...workspace.decisionVersions]) {
+    if (!decisionIds.has(child.decisionId)) errors.push('Child record ' + child.id + ' references a missing decision.');
+  }
+  for (const signal of workspace.signals) {
+    if (signal.assumptionId && !assumptionIds.has(signal.assumptionId)) errors.push('Signal ' + signal.id + ' references a missing assumption.');
+    const target = signal.assumptionId ? assumptionsById.get(signal.assumptionId) : undefined;
+    if (target && target.decisionId !== signal.decisionId) errors.push('Signal ' + signal.id + ' references another decision’s assumption.');
+  }
+  for (const relation of workspace.relations) {
+    if (!decisionIds.has(relation.sourceDecisionId)) errors.push('Relation ' + relation.id + ' has a missing source decision.');
+    if (relation.targetDecisionId && !decisionIds.has(relation.targetDecisionId)) errors.push('Relation ' + relation.id + ' has a missing target decision.');
+    if (relation.targetDecisionId === relation.sourceDecisionId) errors.push('A decision cannot depend on itself.');
+    if (!relation.targetDecisionId && !relation.unresolvedTargetId) errors.push('Relation ' + relation.id + ' has no target reference.');
+  }
+  for (const review of workspace.reviews) if (!decisionIds.has(review.decisionId)) errors.push('Review ' + review.id + ' references a missing decision.');
+  for (const row of workspace.assumptionReviews) {
+    if (!reviewById.has(row.reviewId)) errors.push('Assumption review ' + row.id + ' references a missing review.');
+    if (!assumptionIds.has(row.assumptionId)) errors.push('Assumption review ' + row.id + ' references a missing assumption.');
+    const assumption = assumptionsById.get(row.assumptionId);
+    const review = reviewById.get(row.reviewId);
+    if (assumption && review && assumption.decisionId !== review.decisionId) errors.push('Assumption review ' + row.id + ' crosses decision boundaries.');
+  }
+  return { errors, warnings };
+}
