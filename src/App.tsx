@@ -20,6 +20,7 @@ import {
   GitBranch,
   Lightbulb,
   Link2,
+  Menu,
   ListChecks,
   Plus,
   Printer,
@@ -679,6 +680,7 @@ function App() {
   const [formError, setFormError] = useState('');
   const [newProjectName, setNewProjectName] = useState('');
   const [showPremortem, setShowPremortem] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [captureMode, setCaptureMode] = useState<'Quick' | 'Deep'>('Quick');
   const [reviewDraft, setReviewDraft] = useState<ReviewDraft>({
     actualOutcome: '',
@@ -771,7 +773,7 @@ function App() {
       ));
     }
     if (tagFilter !== 'All') list = list.filter(d => d.tags.includes(tagFilter));
-    if (horizonFilter !== 'All' || urgencyFilter !== 'All') {
+    if (horizonFilter !== 'All') {
       list = list.filter(d => {
         const days = horizonDays(d.horizon);
         if (horizonFilter === 'Unspecified') return days === null;
@@ -1322,38 +1324,25 @@ function App() {
     label: string;
     icon: React.ReactNode;
     count?: number;
+    group: 'Workspace' | 'Risk & attention' | 'Analysis & learning';
   }[] = [
-    { id: 'overview', label: 'Overview', icon: <Activity size={17} /> },
-    {
-      id: 'all',
-      label: 'All decisions',
-      icon: <ClipboardList size={17} />,
-      count: decisions.length,
-    },
-    {
-      id: 'reviews',
-      label: 'Open reviews',
-      icon: <CalendarClock size={17} />,
-      count: dueDecisions.length,
-    },
-    {
-      id: 'violated',
-      label: 'Violated assumptions',
-      icon: <ShieldAlert size={17} />,
-      count: violatedCount,
-    },
-    {
-      id: 'high-impact',
-      label: 'High-impact risks',
-      icon: <Target size={17} />,
-    },
-    { id: 'projects', label: 'Projects', icon: <FolderKanban size={17} /> },
-    { id: 'portfolio', label: 'Portfolio risk', icon: <ShieldAlert size={17} />, count: openHighRiskAssumptions.length },
-    { id: 'bets', label: 'Strategic bets', icon: <Target size={17} /> },
-    { id: 'dependencies', label: 'Dependencies', icon: <GitBranch size={17} /> },
-    { id: 'compare', label: 'Compare decisions', icon: <ListChecks size={17} /> },
-    { id: 'lessons', label: 'Lessons library', icon: <Lightbulb size={17} /> },
-    { id: 'stats', label: 'Learning stats', icon: <BarChart3 size={17} /> },
+    { id: 'overview', label: 'Overview', icon: <Activity size={17} />, group: 'Workspace' },
+    { id: 'all', label: 'All decisions', icon: <ClipboardList size={17} />, count: decisions.length, group: 'Workspace' },
+    { id: 'reviews', label: 'Open reviews', icon: <CalendarClock size={17} />, count: dueDecisions.length, group: 'Workspace' },
+    { id: 'projects', label: 'Projects', icon: <FolderKanban size={17} />, group: 'Workspace' },
+    { id: 'violated', label: 'Violated assumptions', icon: <ShieldAlert size={17} />, count: violatedCount, group: 'Risk & attention' },
+    { id: 'high-impact', label: 'High-impact risks', icon: <Target size={17} />, group: 'Risk & attention' },
+    { id: 'portfolio', label: 'Portfolio risk', icon: <ShieldAlert size={17} />, count: openHighRiskAssumptions.length, group: 'Risk & attention' },
+    { id: 'bets', label: 'Strategic bets', icon: <Target size={17} />, group: 'Risk & attention' },
+    { id: 'dependencies', label: 'Dependencies', icon: <GitBranch size={17} />, group: 'Analysis & learning' },
+    { id: 'compare', label: 'Compare decisions', icon: <ListChecks size={17} />, group: 'Analysis & learning' },
+    { id: 'lessons', label: 'Lessons library', icon: <Lightbulb size={17} />, group: 'Analysis & learning' },
+    { id: 'stats', label: 'Learning stats', icon: <BarChart3 size={17} />, group: 'Analysis & learning' },
+  ];
+  const navGroups = [
+    { label: 'WORKSPACE', items: navItems.filter(item => item.group === 'Workspace') },
+    { label: 'RISK & ATTENTION', items: navItems.filter(item => item.group === 'Risk & attention') },
+    { label: 'ANALYSIS & LEARNING', items: navItems.filter(item => item.group === 'Analysis & learning') },
   ];
   const listTitle =
     activeView === 'reviews' ? 'Open reviews'
@@ -1383,7 +1372,7 @@ function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <aside className={"sidebar" + (mobileNavOpen ? " mobile-nav-open" : "")}>
         <div className="brand-lockup">
           <div className="brand-mark">
             <GitBranch size={20} />
@@ -1400,33 +1389,36 @@ function App() {
         >
           <Plus size={17} /> New decision <span className="shortcut">N</span>
         </button>
-        <div className="nav-caption">WORKSPACE</div>
-        <nav className="main-nav" aria-label="Main navigation">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              type="button"
-              className={
-                'nav-item ' +
-                (activeView === item.id && !selectedId ? 'active' : '')
-              }
-              onClick={() => selectView(item.id)}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-              {typeof item.count === 'number' && (
-                <span
-                  className={
-                    'nav-count ' +
-                    (item.id === 'reviews' && item.count > 0
-                      ? 'count-alert'
-                      : '')
-                  }
-                >
-                  {item.count}
-                </span>
-              )}
-            </button>
+        <nav className="primary-navigation" id="primary-navigation" aria-label="Primary navigation">
+          {navGroups.map(group => (
+            <section className="nav-section" key={group.label}>
+              <div className="nav-caption">{group.label}</div>
+              <div className="main-nav">
+                {group.items.map(item => {
+                  const isActive = (!selectedId && activeView === item.id) || (Boolean(selectedId) && item.id === 'all');
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={'nav-item ' + (isActive ? 'active' : '')}
+                      aria-current={isActive ? 'page' : undefined}
+                      onClick={() => {
+                        selectView(item.id);
+                        setMobileNavOpen(false);
+                      }}
+                    >
+                      {item.icon}
+                      <span>{item.label}</span>
+                      {typeof item.count === 'number' && (
+                        <span className={'nav-count ' + ((item.id === 'reviews' || item.id === 'violated') && item.count > 0 ? 'count-alert' : '')}>
+                          {item.count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
           ))}
         </nav>
         <div className="sidebar-bottom">
@@ -1446,9 +1438,22 @@ function App() {
           </button>
         </div>
       </aside>
+      {mobileNavOpen && (
+        <button type="button" className="mobile-nav-backdrop" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />
+      )}
 
       <main className="main-area">
         <header className="topbar">
+          <button
+            className="mobile-nav-toggle secondary-button"
+            type="button"
+            aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'}
+            aria-expanded={mobileNavOpen}
+            aria-controls="primary-navigation"
+            onClick={() => setMobileNavOpen(open => !open)}
+          >
+            {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
           <div className="topbar-context">
             <div className="eyebrow">DECISION QUALITY WORKSPACE</div>
             <div className="page-heading">
@@ -1475,6 +1480,11 @@ function App() {
               )}
             </div>
           </div>
+          <div className="topbar-meta">
+            <span>{selectedDecision ? selectedDecision.project : activeProject === 'All' ? 'All projects' : activeProject}</span>
+            <span className="topbar-meta-divider">/</span>
+            <span>{selectedDecision ? 'Decision record' : decisions.length + ' decision' + (decisions.length === 1 ? '' : 's')}</span>
+          </div>
           <div className="topbar-actions">
             <div className="privacy-chip">
               <span className="status-dot" /> Local-first
@@ -1491,6 +1501,22 @@ function App() {
         </header>
 
         <div className="workspace">
+          {(storageError || storageBackend === 'localStorage') && (
+            <section className={'storage-alert ' + (storageError ? 'storage-alert-error' : 'storage-alert-warning')} role="alert">
+              <ShieldAlert size={18} />
+              <div>
+                <strong>{storageError ? 'Local saving needs attention' : 'Using browser-storage fallback'}</strong>
+                <p>
+                  {storageError
+                    ? 'The app could not confirm that your latest changes were saved. Export a backup and check available browser storage.'
+                    : 'IndexedDB is unavailable in this browser context. Data is still kept locally, but export a backup before clearing site data.'}
+                </p>
+              </div>
+              <button className="secondary-button" type="button" onClick={exportBackup}>
+                <Download size={15} /> Export backup
+              </button>
+            </section>
+          )}
           {selectedDecision ? (
             <DecisionDetail
               decision={selectedDecision}
@@ -2176,12 +2202,12 @@ function App() {
                 <EmptyState
                   icon={<Search size={22} />}
                   title={
-                    query || activeProject !== 'All' || confidenceFilter !== 'All' || riskFilter !== 'All' || reversibilityFilter !== 'All' || reviewFilter !== 'All' || tagFilter !== 'All' || horizonFilter !== 'All'
+                    query || activeProject !== 'All' || confidenceFilter !== 'All' || riskFilter !== 'All' || reversibilityFilter !== 'All' || reviewFilter !== 'All' || tagFilter !== 'All' || horizonFilter !== 'All' || urgencyFilter !== 'All'
                       ? 'No matching decisions'
                       : 'Nothing here yet'
                   }
                   description={
-                    query || activeProject !== 'All' || confidenceFilter !== 'All' || riskFilter !== 'All' || reversibilityFilter !== 'All' || reviewFilter !== 'All' || tagFilter !== 'All' || horizonFilter !== 'All'
+                    query || activeProject !== 'All' || confidenceFilter !== 'All' || riskFilter !== 'All' || reversibilityFilter !== 'All' || reviewFilter !== 'All' || tagFilter !== 'All' || horizonFilter !== 'All' || urgencyFilter !== 'All'
                       ? 'Try changing the search or clearing filters.'
                       : activeView === 'reviews'
                         ? 'No reviews are due. Future review dates will appear here when they become due.'
@@ -3374,8 +3400,19 @@ function DecisionDetail({
           </button>
         </div>
       </div>
+      <nav className="detail-jump-nav" aria-label="Decision record sections">
+        <a href="#decision-forecast">Forecast</a>
+        <a href="#decision-scenarios">Scenarios</a>
+        <a href="#decision-commitments">Commitments</a>
+        <a href="#decision-kill-criteria">Stop rules</a>
+        <a href="#decision-alternatives">Alternatives</a>
+        <a href="#decision-assumptions">Assumptions</a>
+        <a href="#decision-signals">Signals</a>
+        <a href="#decision-review">Review</a>
+        <a href="#decision-dependencies">Dependencies</a>
+      </nav>
       <div className="detail-section-grid">
-        <section className="panel detail-panel">
+        <section className="panel detail-panel" id="decision-forecast">
           <div className="panel-heading">
             <div>
               <div className="section-kicker">FORECAST</div>
@@ -3427,7 +3464,7 @@ function DecisionDetail({
           )}
         </section>
       </div>
-      <section className="panel detail-panel scenario-summary-panel">
+      <section className="panel detail-panel scenario-summary-panel" id="decision-scenarios">
         <div className="panel-heading"><div><div className="section-kicker">NUMERIC FORECAST</div><h2>Outcome scenarios</h2></div><Badge>{decision.scenarios.unit || 'Unit not specified'}</Badge></div>
         {(['best', 'base', 'worst'] as const).some(key => decision.scenarios[key].value.trim()) ? (
           <div className="scenario-summary-grid">
@@ -3439,7 +3476,7 @@ function DecisionDetail({
           </div>
         ) : <p className="muted-text">No numeric scenarios captured. Use Deep mode to record best, base and worst case numbers or ranges.</p>}
       </section>
-      <section className="panel detail-panel commitments-panel">
+      <section className="panel detail-panel commitments-panel" id="decision-commitments">
         <div className="panel-heading"><div><div className="section-kicker">EXECUTION</div><h2>Commitments</h2></div><Badge>{decision.commitments.filter(item => item.status === 'Open').length} open</Badge></div>
         {(decision.commitments || []).filter(item => item.text.trim()).length ? <div className="commitment-list">
           {decision.commitments.filter(item => item.text.trim()).map(item => {
@@ -3456,14 +3493,14 @@ function DecisionDetail({
           })}
         </div> : <p className="muted-text">No follow-up commitments recorded. Add owners and due dates in Deep mode.</p>}
       </section>
-      <section className="panel detail-panel kill-criteria-panel">
+      <section className="panel detail-panel kill-criteria-panel" id="decision-kill-criteria">
         <div className="panel-heading"><div><div className="section-kicker">INVALIDATION RULES</div><h2>Kill criteria</h2></div><Badge>{decision.killCriteria.filter(k => k.text.trim()).length} defined</Badge></div>
         {decision.killCriteria.filter(k => k.text.trim()).length ? <div className="kill-criteria-list">{decision.killCriteria.filter(k => k.text.trim()).map(k => <div className="kill-criterion-row" key={k.id}>
           <div className="kill-criterion-copy"><strong>{k.text}</strong><small>{k.triggeredAt ? 'Triggered ' + formatDate(k.triggeredAt) : 'Not triggered'}</small></div>
           {k.triggered ? <Badge tone={k.clearedAt ? 'muted' : 'danger'}>{k.clearedAt ? 'Triggered · reviewed' : 'Triggered · revisit needed'}</Badge> : <button className="secondary-button trigger-button" type="button" onClick={() => onTriggerKill(k.id)}><ShieldAlert size={14}/> Criterion triggered</button>}
         </div>)}</div> : <p className="muted-text">No kill criteria were defined. Edit this decision to add measurable conditions that would invalidate it.</p>}
       </section>
-      <section className="panel detail-panel alternatives-panel">
+      <section className="panel detail-panel alternatives-panel" id="decision-alternatives">
         <div className="panel-heading">
           <div>
             <div className="section-kicker">TRADE-OFFS</div>
@@ -3503,7 +3540,7 @@ function DecisionDetail({
           </p>
         )}
       </section>
-      <section className="panel detail-panel assumptions-panel">
+      <section className="panel detail-panel assumptions-panel" id="decision-assumptions">
         <div className="panel-heading">
           <div>
             <div className="section-kicker">THE BELIEFS UNDER THE CHOICE</div>
@@ -3569,7 +3606,7 @@ function DecisionDetail({
           />
         )}
       </section>
-      <section className="panel detail-panel signal-log-panel">
+      <section className="panel detail-panel signal-log-panel" id="decision-signals">
         <div className="panel-heading">
           <div><div className="section-kicker">EVIDENCE BETWEEN REVIEWS</div><h2>Signal log</h2></div>
           <Badge>{(decision.signals || []).length} entries</Badge>
@@ -3592,7 +3629,7 @@ function DecisionDetail({
         })}</div> : <p className="muted-text small">No signal entries yet.</p>}
       </section>
       <div className="detail-section-grid">
-        <section className="panel detail-panel">
+        <section className="panel detail-panel" id="decision-review">
           <div className="panel-heading">
             <div>
               <div className="section-kicker">REVIEW</div>
@@ -3639,7 +3676,7 @@ function DecisionDetail({
             />
           )}
         </section>
-        <section className="panel detail-panel">
+        <section className="panel detail-panel" id="decision-dependencies">
           <div className="panel-heading">
             <div>
               <div className="section-kicker">DEPENDENCIES</div>
