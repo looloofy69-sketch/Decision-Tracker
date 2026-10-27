@@ -52,6 +52,13 @@ function readLegacySafely(read: () => Store): Store {
 function hasUserData(store: Store): boolean {
   return store.decisions.length > 0 || store.projects.some(project => project !== 'General');
 }
+
+export function chooseRecoverySource(aggregate: unknown, local: Store): Store {
+  if (isStore(aggregate) && hasUserData(aggregate)) return aggregate;
+  if (hasUserData(local)) return local;
+  if (isStore(aggregate)) return aggregate;
+  return local;
+}
 function mirrorToLocalStorage(store: Store, key: string) {
   try { if (typeof window !== 'undefined') window.localStorage.setItem(key, JSON.stringify(store)); }
   catch { /* IndexedDB remains authoritative if the compatibility mirror is unavailable. */ }
@@ -213,9 +220,11 @@ function persistNormalizedStore(db: IDBDatabase, store: Store): Promise<Normaliz
 export async function loadWorkspaceStore(readLocalStore: () => Store, legacyKey: string): Promise<LoadResult> {
   const localCopy = () => readLegacySafely(readLocalStore);
   let db: IDBDatabase | null = null;
+  let lastAggregate: unknown = null;
   try {
     db = await openDatabase();
     const aggregate = await readCurrentRecord(db);
+    lastAggregate = aggregate;
     const normalized = await readNormalizedWorkspace(db);
     if (normalized.marker && normalized.workspace && normalized.report?.errors.length === 0) {
       const store = hydrateStore(normalized.workspace);
@@ -227,7 +236,7 @@ export async function loadWorkspaceStore(readLocalStore: () => Store, legacyKey:
     }
     if (normalized.marker && normalized.report?.errors.length) {
       const local = localCopy();
-      const source = hasUserData(local) ? local : isStore(aggregate) ? aggregate : local;
+      const source = chooseRecoverySource(aggregate, local);
       const report = await persistNormalizedStore(db, source);
       mirrorToLocalStorage(source, legacyKey);
       return {
@@ -244,7 +253,15 @@ export async function loadWorkspaceStore(readLocalStore: () => Store, legacyKey:
       : undefined;
     return { store: source, backend: 'IndexedDB', notice };
   } catch {
-    return { store: localCopy(), backend: 'localStorage' };
+    const local = localCopy();
+    const aggregateIsUsable = isStore(lastAggregate) && hasUserData(lastAggregate);
+    return {
+      store: chooseRecoverySource(lastAggregate, local),
+      backend: 'localStorage',
+      notice: aggregateIsUsable
+        ? 'The normalized migration could not finish. Your retained aggregate copy is loaded in browser-storage fallback mode; export a JSON backup before continuing.'
+        : 'IndexedDB could not be read. The browser-storage copy is loaded as a fallback; export a JSON backup before clearing site data.',
+    };
   } finally {
     db?.close();
   }
