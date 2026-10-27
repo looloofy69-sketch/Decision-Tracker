@@ -1367,6 +1367,20 @@ function App() {
       : activeView === 'compare' ? 'Compare decisions'
       : 'Decision log';
 
+  if (!storeReady) {
+    return (
+      <div className="app-shell" aria-busy="true">
+        <main className="workspace" role="status" aria-live="polite">
+          <div className="eyebrow">LOCAL WORKSPACE</div>
+          <h1>Loading your decisions…</h1>
+          <p className="page-subtitle">
+            Opening the on-device workspace and checking for previously saved data.
+          </p>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
