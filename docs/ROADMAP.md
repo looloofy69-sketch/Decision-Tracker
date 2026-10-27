@@ -2,58 +2,63 @@
 
 ## Phase 0 — Working local-first product
 
-- [x] Quick and deep capture, alternatives, assumptions, signals, kill criteria, commitments, and scenario estimates.
-- [x] Reviews, outcomes, lessons, calibration/portfolio views, and urgency indicators.
-- [x] JSON backup and Markdown/PDF reporting.
+- [x] Quick/deep capture, alternatives, assumptions, signals, kill criteria, commitments and scenario estimates.
+- [x] Reviews, outcomes, lessons, calibration/portfolio views and urgency indicators.
+- [x] JSON backup and Markdown/PDF reports.
 - [x] Service-worker app-shell caching.
-- [x] IndexedDB persistence with legacy localStorage migration and fallback.
-- [x] Extract shared domain types and risk/urgency calculations from the React component.
-- [x] Establish source repository and CI baseline.
+- [x] IndexedDB primary persistence with localStorage migration/fallback.
+- [x] Extract shared domain types and risk/urgency calculations.
+- [x] Initialize the source repository and CI workflow.
 
-## Phase 0.5 — UX stabilization and review gate (must precede domain normalization)
+## Phase 0.5 — UX stabilization and review gate
 
 - [x] Group navigation into Workspace, Risk & Attention, and Analysis & Learning.
-- [x] Replace the crowded small-screen horizontal navigation strip with an accessible, dismissible menu.
-- [x] Add in-record jump navigation for long decision details.
-- [x] Make project/record context clearer in the header.
-- [x] Surface storage fallback/failure status with a direct backup action.
-- [x] Correct the interaction where urgency-only filtering accidentally applied a time-horizon rule.
-- [x] Add acceptance scenarios for mobile navigation, section jumps, and independent urgency/horizon filtering.
-- [ ] Manually verify mobile navigation on a real device at 375px and 320px widths.
-- [ ] Keyboard-test menu open/close, focus visibility, anchor navigation, forms, and dialogs.
-- [ ] Measure Quick Capture from opening the form to save; meet the 30–40 second target without requiring Deep Mode.
-- [ ] Run the acceptance suite and record any failures or regressions before approving the next phase.
+- [x] Replace the crowded mobile navigation strip with a dismissible grouped menu.
+- [x] Add sticky section links for long decision details.
+- [x] Surface degraded-storage warnings and backup action.
+- [x] Make urgency and time-horizon filters independent.
+- [ ] Manually verify navigation on 320px and 375px devices.
+- [ ] Keyboard-test menu open/close, focus order, anchor navigation, forms and dialogs.
+- [ ] Measure Quick Capture against the 30–40 second target on a real mobile device.
+- [ ] Record actual acceptance-suite results before declaring the UX gate fully passed.
 
-**Gate:** Phase 1 stays paused until the UX checklist above is reviewed. The current deployment's clean frontend/network QA snapshot is useful, but it does not replace hands-on usability, accessibility, or end-to-end testing.
+## Phase 1 — Normalized domain and migration
 
-## Phase 1 — Domain correctness and normalization
+- [x] Add first-class Project records with stable IDs, description, status, timestamps and order.
+- [x] Store decisions with project foreign keys and an optional parent decision.
+- [x] Normalize alternatives, assumptions, kill criteria, signals and commitments with explicit decision foreign keys.
+- [x] Preserve multi-decision links in a dedicated relation store.
+- [x] Add first-class review and assumption-review records.
+- [x] Add schema-versioned IndexedDB stores and a transactional migration from the aggregate model.
+- [x] Retain a pre-normalization aggregate snapshot and keep a compatibility aggregate for the UI.
+- [x] Add structural foreign-key validation, scenario-weight warnings, and tombstones for referenced deleted records.
+- [x] Add unit tests for round-trip mapping, stable IDs, review joins, tombstones, unresolved signals and invalid links.
+- [ ] Verify unit tests, TypeScript checks and production build in CI; record the result.
+- [ ] Run a real browser migration test against representative legacy fixtures, including blocked-upgrade and malformed-data recovery.
+- [ ] Validate import/restore before treating the JSON backup path as a complete recovery workflow.
 
-- [ ] First-class Project records with UUIDs, descriptions, status, and timestamps.
-- [ ] Explicit projectId, parentDecisionId, and foreign keys for all child entities.
-- [ ] Pure, versioned adapters between the current aggregate payload and normalized workspace.
-- [ ] First-class review history and AssumptionReview verdict records.
-- [ ] Validation for foreign keys, enums, dates, scenario probabilities, required fields, and duplicate project names.
-- [ ] Transactional migrations with rollback/recovery tests.
-- [ ] Import/export round-trip and legacy migration tests.
+The current UI still consumes an aggregate adapter by design. Do not remove that boundary until migration, data round-trip, and review-history semantics are verified.
 
-## Phase 2 — UI and workflow hardening
+## Phase 2 — UI/domain follow-through
 
+- [ ] Make Project identity and status visible in project management without breaking existing project-name references.
+- [ ] Surface review history and distinguish inferred legacy verdicts from observed review snapshots.
 - [ ] Split the large React component into capture, decision detail, review, portfolio, comparison, and export modules.
-- [ ] Validate keyboard and mobile behavior using the UX gate.
-- [ ] Add reproducible browser E2E tests for CRUD, review, export, restore, migration, and offline startup.
+- [ ] Add browser E2E tests for CRUD, migration, backup restore, exports, and offline startup.
+- [ ] Run keyboard accessibility and real-device mobile regression checks.
 - [ ] Test IndexedDB quota, blocked upgrades, malformed data, and unavailable storage.
 
 ## Phase 3 — Optional evolution
 
-- [ ] Design privacy and conflict handling before adding sync or accounts.
-- [ ] Consider SQLite/WASM only if measured dataset size or query costs justify it.
-- [ ] Consider native packaging only after the PWA interaction and storage model are stable.
-- [ ] Keep JSON export readable and document breaking schema migrations.
+- [ ] Design privacy, identity, and conflict handling before adding sync or accounts.
+- [ ] Consider SQLite/WASM only if measured dataset size or query cost justifies it.
+- [ ] Consider native packaging after the PWA interaction and storage model are stable.
+- [ ] Keep the JSON export readable and document every breaking schema migration.
 
 ## Exit criteria
 
-- No data loss during tested migrations.
+- No data loss in tested legacy/schema migrations.
 - Domain calculations and validation have deterministic unit tests.
-- Typecheck, tests, build, and browser acceptance tests pass.
-- Fast capture is empirically at or below target on a representative mobile device.
+- Type-check, unit tests, build, and browser acceptance checks pass.
+- Quick Capture is measured at or below its target on a representative mobile device.
 - JSON restore is validated as well as export.
